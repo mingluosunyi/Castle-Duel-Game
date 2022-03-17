@@ -10,8 +10,8 @@ var state = {
   // World
   worldRatio: getWorldRatio(),
   // TODO Other things
-  turn: 1,
-  players: [
+  turn: 1,  // 当前回合
+  players: [  //玩家对象的数组
     {
       name: 'Sunyi Yao'
     },
@@ -19,5 +19,5 @@ var state = {
       name: 'Xingzhe Zhao'
     }
   ],
-  currentPlayerIndex: Math.round(Math.random()),
+  currentPlayerIndex: Math.round(Math.random()),  //当前玩家在players数组中的索引
 }
