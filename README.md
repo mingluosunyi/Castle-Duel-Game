@@ -38,8 +38,8 @@ var state = {
 }
 ```
 #### 定义和使用组件
-+ 创建一个components文件夹，然后在下面创建一个新的ui.js文件，然后在index.html中引用这个ui.js文件
-+ 在ui.js文件中创建top-bar组件
++ 创建一个components文件夹，然后在下面创建一个新的TopBar.js文件，然后在index.html中引用这个TopBar.js文件
++ 在TopBar.js文件中创建top-bar组件
 ```javascript
 const TopBar = `
 <div class="top-bar">
@@ -139,3 +139,108 @@ const TopBar = `
 `
 ```
 ![img](./readme-md-pictures/截屏2022-03-17%20下午7.09.20.png)
+
+### 卡牌组件
++ 在components目录下创建OneCard.js文件，然后在index.html中引用这个OneCard.js文件
++ 在OneCard.js文件中创建one-card组件
+
+#### 卡片数据
+所有的卡片数据都保存在cards.js中，每张卡片都有如下字段
++ id
++ type //卡牌类型
++ title //卡牌的名称
++ description //说明卡片的作用
++ note //一段可选的背景叙述
++ play //玩家出牌后的效果
+
+(1)卡牌组件需要一个参数来接收卡牌数据
+```javascript
+Vue.coponent('one-card',{
+  props:['def']
+})
+```
+(2)卡牌可以根据type改变背景颜色,使用动态css实现
+```javascript
+<div class="card" :class="'type-'+def.type">
+</div>
+```
+(3)添加卡牌的title、description、note等信息
+```javascript
+<div class="card" :class="'type-'+def.type" @click="play">
+  <div class="title">{{ def.title }}</div>
+  <-- 分隔符图像 -->  
+  <img src="../svg/card-separator.svg" class="separator"/>
+  <-- 因为description是html文本所以要用v-html --> 
+  <div class="description">
+    <div v-html="def.description"></div>
+  </div>
+  <-- 不是每张卡牌都有note属性，所以要加v-if -->
+  <div class="note" v-if="def.note">
+    <div v-html="def.note"></div>
+  </div>
+</div>
+```
+(4)在main.js中使用卡牌组件，并用props传递参数
+```javascript
+<div id="app">
+  <top-bar
+  :players="players"
+  :turn="turn"
+  :current-player-index="currentPlayerIndex"
+  />
+  <one-card :def="testCard"/>
+</div>
+
+computed: {
+  testCard () {
+    return cards.archers
+  }
+}
+```
+> 思考一下为什么要用计算属性？
+
++ 我觉得是因为data已经绑定了state，如果把cards.archers也添加到data里会污染data。
+
+这里使用cards.archers可以直接获取到archers这张卡的信息，具体实现在cards.js中
+```javascript
+cards = cards.reduce((map, card) => {
+  card.description = card.description.replace(/\d+\s+<b>.*?<\/b>/gi, '<span class="effect">$&</span>')
+  card.description = card.description.replace(/<b>(.*?)<\/b>/gi, (match, p1) => {
+    const id = p1.toLowerCase()
+    return `<b class="keyword ${id}">${p1} <img src="svg/${id}.svg"/></b>`
+  })
+  map[card.id] = card
+  return map
+}, {})
+```
+核心是用reduce方法把cards从Array变成了Map，从而可以使用索引直接取到，妙啊！
+
+(5)向父组件传递消息
+出于后续某些功能的需要，我们希望card在被使用后能告诉main一个消息，表明自己已经被使用了。
+在Vue中，子组件向父组件传递消息使用`$emit()`方法
+以我个人的理解，`$emit`相当于一个信号传递管道，子组件和父组件事先沟通一个管道名字是play，子组件在某个信号触发下会调用`$emit`向父组件发送信号和数据。然后父组接收到信号和数据后决定接下来的操作！
+```javascript
+<div class="card" :class="'type-'+def.type" @click="play">
+    //...
+</div>
+Vue.component('one-card',{
+  // ...
+  methods: {
+    play () {
+      this.$emit('play');
+    }
+  }
+})
+```
+```javascript
+<one-card :def="testCard" @play="handlePlay"/>
+methods: {
+    handlePlay () {
+      console.log('You played a card!')
+    }
+}
+```
+这样我们的卡牌组件就创建完毕了。
+
+### 手牌组件
+

@@ -4,7 +4,8 @@ const App = `
   :players="players"
   :turn="turn"
   :current-player-index="currentPlayerIndex"
-  ></top-bar>
+  />
+  <one-card :def="testCard" @play="handlePlay"/>
 </div>
 `
 
@@ -12,5 +13,15 @@ new Vue({
   name: 'game',
   el: '#app',
   data: state,
-  template: App
+  template: App,
+  computed: {
+    testCard () {
+      return cards.archers
+    }
+  },
+  methods: {
+    handlePlay () {
+      console.log('You played a card!')
+    }
+  }
 })
