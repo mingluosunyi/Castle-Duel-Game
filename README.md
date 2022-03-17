@@ -243,4 +243,85 @@ methods: {
 这样我们的卡牌组件就创建完毕了。
 
 ### 手牌组件
+先在脑海中设想一下手牌组件：手牌组件被main组件调用，同时手牌组件包含5张手牌，也就意味着要调用卡牌组件。
 
+那么手牌组件接收的参数是什么呢？
+
+手牌组件的参数主要用于给卡牌组件传递参数，因此卡牌组件需要什么参数，手牌组件也就需要什么参数。
+
+但是有个问题是：仅仅只靠卡牌组件的参数无法区分两张同样类型的卡牌，因此手牌组件需要额外的Uid属性唯一标识一张卡牌。
+
+同样的，我们不可能每次通过卡牌的def信息来判读一种卡牌，这样并不方便。因此每种卡牌都有一个种类id，方便区分。
+
+那么手牌接收的参数将会是一个长度为5的数组，数组的元素是长这样的对象：
+```javascript
+{
+    uid: cardUid,
+    id: Id,
+    def: cards[Id]
+}
+```
+
+假设手牌组件接收的参数叫cards，下面我们来创建手牌组件吧！
+
+```javascript
+const HandCards = `
+<div class="hand">
+  <div class="wrapper">
+    <one-card v-for="card in cards" :def="card.def" :key="card.cardUid"/>
+  </div>
+</div>
+`
+
+Vue.component('hand-cards',{
+  props:['cards'],
+  template: HandCards
+})
+```
+
+然后在main组件中调用手牌组件并传递参数，假设参数保存在一个叫做testHand的属性中。
+```javascript
+const App = `
+<div id="app">
+  <top-bar
+  :players="players"
+  :turn="turn"
+  :current-player-index="currentPlayerIndex"
+  />
+  <hand-cards :cards="testHand" />
+</div>
+`
+```
+
+那么最后的工作就是创建testHand了。还记得上面的提问吗，我们用计算属性来测试可以放置对data的污染。
+
+随机生产卡牌的代码相信聪明的你应该已经看懂了吧！
+
+```javascript
+computed:{
+  testHand () {
+    return this.createTestHand()
+  }
+},
+methods:{
+  createTestHand () {
+    const cards = []
+    for (let i = 0; i < 5; i++) {
+      cards.push(this.testDrawCard())
+    }
+    return cards
+  },
+  testDrawCard () {
+    let cardUid = 0
+    const ids = Object.keys(cards)
+    const randomId = ids[Math.floor(Math.random() * ids.length)]
+    return {
+      uid: cardUid++,
+      id: randomId,
+      def: cards[randomId]
+    }
+  } 
+}
+```
+
+![hand-cards](./readme-md-pictures/截屏2022-03-17%20下午9.57.11.png )
