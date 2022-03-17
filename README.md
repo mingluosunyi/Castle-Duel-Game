@@ -10,3 +10,12 @@ new Vue({
   el: '#app'
 })
 ```
+
+## 构建用户界面
+###第一个组件：顶栏
+替换html里的script标签
+
+```javascript
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+```
+

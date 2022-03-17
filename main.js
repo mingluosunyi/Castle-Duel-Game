@@ -1,4 +1,5 @@
 new Vue({
   name: 'game',
-  el: '#app'
+  el: '#app',
+  data: state
 })

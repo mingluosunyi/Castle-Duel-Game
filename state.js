@@ -10,4 +10,14 @@ var state = {
   // World
   worldRatio: getWorldRatio(),
   // TODO Other things
+  turn: 1,
+  players: [
+    {
+      name: 'Sunyi Yao'
+    },
+    {
+      name: 'Xingzhe Zhao'
+    }
+  ],
+  currentPlayerIndex: Math.round(Math.random()),
 }
