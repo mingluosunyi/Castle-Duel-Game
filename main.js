@@ -5,7 +5,9 @@ const App = `
   :turn="turn"
   :current-player-index="currentPlayerIndex"
   />
-  <hand-cards :cards="testHand" />
+  <transition name="hand">
+    <hand-cards :cards="testHand" v-if="!activeOverlay" @card-play="testPlayCard" />
+  </transition>
 </div>
 `
 
@@ -17,9 +19,6 @@ new Vue({
   computed: {
     testCard () {
       return cards.archers
-    },
-    testHand () {
-      return this.createTestHand()
     }
   },
   methods: {
@@ -34,7 +33,6 @@ new Vue({
       return cards
     },
     testDrawCard () {
-      let cardUid = 0
       const ids = Object.keys(cards)
       const randomId = ids[Math.floor(Math.random() * ids.length)]
       return {
@@ -42,6 +40,13 @@ new Vue({
         id: randomId,
         def: cards[randomId]
       }
+    },
+    testPlayCard(card) {
+      const index = this.testHand.indexOf(card)
+      this.testHand.splice(index,1)
     }
+  },
+  created () {
+    this.testHand = this.createTestHand()
   }
 })

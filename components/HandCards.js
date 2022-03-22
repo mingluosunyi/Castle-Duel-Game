@@ -1,12 +1,19 @@
 const HandCards = `
 <div class="hand">
   <div class="wrapper">
-    <one-card v-for="card in cards" :def="card.def" :key="card.cardUid"/>
+    <transition-group tag="div" name="card" class="cards">
+      <one-card v-for="card of cards" :key="card.uid" :def="card.def" @play="handlePlay(card)" />
+    </transition-group>
   </div>
 </div>
 `
 
 Vue.component('hand-cards',{
   props:['cards'],
-  template: HandCards
+  template: HandCards,
+  methods: {
+    handlePlay(card) {
+      this.$emit('card-play',card)
+    }
+  }
 })

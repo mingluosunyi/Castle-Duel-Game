@@ -15,7 +15,7 @@ Vue.component('one-card',{
   props:['def'],
   template: OneCard,
   methods: {
-    play () {
+    play() {
       this.$emit('play');
     }
   }

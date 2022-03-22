@@ -20,4 +20,6 @@ var state = {
     }
   ],
   currentPlayerIndex: Math.round(Math.random()),  //当前玩家在players数组中的索引
+  activeOverlay: null,
+  testHand:[]
 }

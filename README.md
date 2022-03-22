@@ -249,9 +249,9 @@ methods: {
 
 手牌组件的参数主要用于给卡牌组件传递参数，因此卡牌组件需要什么参数，手牌组件也就需要什么参数。
 
-但是有个问题是：仅仅只靠卡牌组件的参数无法区分两张同样类型的卡牌，因此手牌组件需要额外的Uid属性唯一标识一张卡牌。
+但是有个问题是：仅仅只靠卡牌组件的参数无法区分两张同样类型的卡牌，因此手牌组件需要额外的`Uid`属性唯一标识一张卡牌。
 
-同样的，我们不可能每次通过卡牌的def信息来判读一种卡牌，这样并不方便。因此每种卡牌都有一个种类id，方便区分。
+同样的，我们不可能每次通过卡牌的`def`信息来判读一种卡牌，这样并不方便。因此每种卡牌都有一个种类`id`，方便区分。
 
 那么手牌接收的参数将会是一个长度为5的数组，数组的元素是长这样的对象：
 ```javascript
@@ -279,7 +279,7 @@ Vue.component('hand-cards',{
 })
 ```
 
-然后在main组件中调用手牌组件并传递参数，假设参数保存在一个叫做testHand的属性中。
+然后在main组件中调用手牌组件并传递参数，假设参数保存在一个叫做`testHand`的属性中。
 ```javascript
 const App = `
 <div id="app">
@@ -293,16 +293,18 @@ const App = `
 `
 ```
 
-那么最后的工作就是创建testHand了。还记得上面的提问吗，我们用计算属性来测试可以放置对data的污染。
+那么最后的工作就是创建`testHand了`。在state.js中创建名为`testHand`的属性,在组件创建完成后随机生产`testHand`
+
+```javascript
+var state = {
+  //...
+  testHand:[]
+}
+```
 
 随机生产卡牌的代码相信聪明的你应该已经看懂了吧！
 
 ```javascript
-computed:{
-  testHand () {
-    return this.createTestHand()
-  }
-},
 methods:{
   createTestHand () {
     const cards = []
@@ -321,7 +323,91 @@ methods:{
       def: cards[randomId]
     }
   } 
+},
+created () {
+  this.testHand = this.createTestHand()
 }
 ```
 
 ![hand-cards](./readme-md-pictures/截屏2022-03-17%20下午9.57.11.png )
+
+但此时如果你将鼠标移动到卡牌上，卡牌并不会有任何反应，与预期不符。在本人寻找了很久之后终于发现了问题所在，请打开`style.css`文件，找到hand类的样式，注释掉` pointer-events: none;`这句代码，之后页面就回复正常了。
+
+#### 出牌
+手牌信息保存在main组件的`data`中，而点击事件是在卡牌组件上的，因此要把信息从卡牌组件发送到main组件。信息具体是什么呢？这里设置为卡牌card。card是手牌组件中的数据，所以卡牌组件只要向手牌组件发送信号而不需要数据。手牌组件向main组件发送信号和数据。
+
+还记得之前在卡牌组件上定义了点击事件click,会触发自定义事件`play`,那么我们现在在手牌组件上侦听`play`事件。当事件发生时，向main组件发送card信息并触发`card-play`自定义事件，最后main组件处理`card-play`事件，在手牌中删除这张卡牌。
+
+```javascript
+<one-card v-for="card of cards" :key="card.uid" :def="card.def" @play="handlePlay(card)" />
+methods: {
+  handlePlay(card) {
+    this.$emit('card-play',card)
+  }
+}
+```
+```javascript
+<hand-cards :cards="testHand" v-if="!activeOverlay" @card-play="testPlayCard" />
+testPlayCard(card) {
+      const index = this.testHand.indexOf(card)
+      this.testHand.splice(index,1)
+    }
+```
+
+这样出牌功能就完成了。
+![play-card](./readme-md-pictures/截屏2022-03-22%20下午8.12.25.png)
+
+下面我们学习用vue来给出牌动作添加一些过渡效果。
+
+众所周知，我们的卡牌组件是用v-for动态渲染出来的，参考Vue官方文档，对于这样的列表元素，添加过渡效果需要使用`<transiton-group>`。**这个标签不同于`<template>`,默认会以`<span>`被渲染到页面上**。因此我们要用`tag`属性指定一下默认渲染的标签。
+
+修改手牌组件如下，用`transition-group`包裹`one-card`：
+```javascript
+ <transition-group tag="div" name="card" class="cards">
+      <one-card v-for="card of cards" :key="card.uid" :def="card.def" @play="handlePlay(card)" />
+    </transition-group>
+```
+
+然后，创建`transitions.css`文件并在html中引入，根据Vue动画的法则，`transition-group`有7个特殊的类，这些类会在特定的过渡时期被自动添加到组件上。他们分别是：`v-enter`,`v-enter-active`,`v-enter-to`,`v-leave`,`v-leave-active`,`v-leave-to`和`v-move`。
+
+这些钩子有两种使用方式：
+1. 
+```javascript
+.组件名.v-enter {
+    //...
+}
+```
+2. 
+```javascript
+.name-enter {
+    //...
+}//name是transition-group上的name属性
+```
+
+下面我们给出牌添加过渡样式
+```css
+//transitions.css
+.card {
+    transition: all .3s
+}
+
+.card-enter {
+    opacity: 0;
+    transform: scale(.8) translateX(100px);
+}
+
+.card-leave-active {
+    transition: all 1s,opacity .5s .5s;
+    position: absolute !important;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.card-leave-to {
+    opacity: 0;
+    transform: translateX(-106px) translateY(-300px) scale(1.5);
+}
+```
+完成。
+
+### 浮层
