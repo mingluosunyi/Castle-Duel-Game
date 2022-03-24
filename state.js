@@ -13,13 +13,38 @@ var state = {
   turn: 1,  // 当前回合
   players: [  //玩家对象的数组
     {
-      name: 'Sunyi Yao'
+      name: 'Sunyi Yao',
+      food: 10,
+      health: 10,
+      //是否跳过下回合
+      skipTurn: false,
+      //上回和是否跳过
+      skippedTurn:false,
+      hand:[],
+      lastPlayedCardId: null,
+      dead: false
     },
     {
-      name: 'Xingzhe Zhao'
+      name: 'Xingzhe Zhao',
+      food: 10,
+      health: 10,
+      skipTurn: false,
+      skippedTurn:false,
+      hand:[],
+      lastPlayedCardId: null,
+      dead: false
     }
   ],
   currentPlayerIndex: Math.round(Math.random()),  //当前玩家在players数组中的索引
   activeOverlay: null,
-  testHand:[]
+  testHand:[],
+  get currentPlayer () {
+    return this.players[state.currentPlayerIndex]
+  },
+  get currentOpponentId () {
+    return this.currentPlayerIndex === 0 ? 1 : 0
+  },
+  get currentOpponent () {
+    return this.players[state.currentOpponentId]
+  },
 }
