@@ -5,11 +5,11 @@ const BigCastle = `
   <!-- 大石头 -->
   <img class="ground" :src="'svg/ground'+index+'.svg'" />
   <!-- banners组件 -->
-  <castle-banners :player="player"/>
+  <slot />
 </div>
 `
 
 Vue.component('big-castle',{
   template: BigCastle,
-  props: ['player','index']
+  props: ['index']
 })

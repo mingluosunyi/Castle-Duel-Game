@@ -410,4 +410,260 @@ testPlayCard(card) {
 ```
 完成。
 
-### 浮层
+### 游戏世界和场景
+
+接下来我们需要做三件事：
+1. 给游戏添加城堡背景
+2. 在城堡上挂上代表食物和血量的旗帜，并让旗帜长度跟随数值变化
+3. 在城堡后面添加会移动的白云
+
+#### 城堡
+城堡长这样
+![castle](./readme-md-pictures/截屏2022-03-25%20下午4.55.08.png)
+明眼人都能看出来是三部分组成的，最上方的城堡，下面的大石头和城墙上的旗帜🚩，旗帜是第二个组件，我们先占个坑就行，城堡组件代码如下：
+```javascript
+const BigCastle = `
+<div class="castle" :class="'player-'+index">
+  <!-- 建筑 -->
+  <img class="building" :src="'svg/castle'+index+'.svg'" />
+  <!-- 大石头 -->
+  <img class="ground" :src="'svg/ground'+index+'.svg'" />
+  <!-- banners组件 -->
+  <slot />
+</div>
+```
+index是什么呢？由于两位玩家的城堡是不同的svg文件，通过文件名来区分，所以在创建城堡组件的时候需要传入玩家编号，即player0还是player1。
+注册城堡组件：
+```javascript
+Vue.component('big-castle',{
+  template: BigCastle,
+  props: ['index']
+})
+```
+然后在main组件中使用城堡组件，生成双方的城堡：
+```javascript
+<big-castle v-for="(player,index) in players" :index="index" :key="index">
+</big-castle>
+```
+![big-castle](readme-md-pictures/截屏2022-03-25%20下午5.44.04.png)
+
+然后加入地面和一些样式
+```javascript
+<div class="world">
+    <big-castle v-for="(player,index) in players" :index="index" :key="index">
+    </big-castle>
+    <div class="land"/>
+  </div>
+```
+![big-castle2](readme-md-pictures/截屏2022-03-25%20下午5.43.12.png)
+
+对了！记得在html中引入城堡组件哦！不然是不生效的。
+#### 旗帜🚩
+旗帜也由三部分组成，旗杆，旗帜和标识数字的小气泡。
+![flag](readme-md-pictures/截屏2022-03-25%20下午5.53.24.png)
+
+这是旗杆部分
+```javascript
+<div class="banners">
+  <img class="food-icon" src="../svg/food-icon.svg"/>
+  <img class="health-icon" src="../svg/health-icon.svg"/>
+</div>
+```
+注册旗帜组件并在main组件中插入到城堡组件的插槽中。即可看到以下变化。
+
+![flagstaff](readme-md-pictures/截屏2022-03-25%20下午5.56.16.png)
+
+接下来制作气泡。
+很明显气泡需要两个属性，颜色和数字。分别对应`type`和`value`。
+`type`可以是`health`或`food`。value则是玩家当前的生命/食物值。
+
+既然要用到玩家数据，那么旗帜组件必须有自定义属性接收。
+```javascript
+Vue.component('castle-banners', {
+  template: CastleBanners,
+  props: ['player'],
+}
+
+const BubbleTip = `
+<div class="stat-bubble" :class="type+'-bubble'">
+  <img :src="'/svg/'+type+'-bubble.svg'" />
+  <div class="counter">{{ value }}</div>
+</div>
+`
+
+Vue.component('bubble-tip',{
+  template: BubbleTip,
+  props: ['type','value']
+})
+```
+最后在旗帜组件中添加bubble组件，在main组件中给旗帜组件传递player属性
+效果如下：
+![bubble](readme-md-pictures/截屏2022-03-25%20下午6.11.29.png)
+
+然后创建旗布组件
+```javascript
+const BannerBar = `
+<svg viewBox="0 0 20 260">
+  <path :d="'m 0, 0 20, 0 0, '+this.height+'-10, -10 -10, 10 z'" :style="'fill:'+this.color+';stroke:none'"/>
+</svg>
+`
+Vue.component('banner-bar', {
+  template: BannerBar,
+  props: ['color'],
+  data() {
+    return {
+      height: 260
+    }
+  },
+}
+```
+在旗帜组件中使用旗布。
+```javascript
+const CastleBanners = `
+<div class="banners">
+  <img class="food-icon" src="../svg/food-icon.svg"/>
+  <bubble-tip type="food" :value="player.food" />
+  <banner-bar class="food-bar" :color="'#288339'" />
+  <img class="health-icon" src="../svg/health-icon.svg"/>
+  <bubble-tip type="health" :value="player.health"/>
+  <banner-bar class="health-bar" :color="'#9b2e2e'" />
+</div>
+```
+最后得到静态的旗帜组件
+![flag-static](readme-md-pictures/截屏2022-03-25%20下午6.16.31.png)
+
+下面我们希望气泡和旗帜的长度可以跟随数值变化。
+
+首先是气泡，我们采用css修改定位的方式来实现。
+```javascript
+const BubbleTip = `
+<div class="stat-bubble" :class="type+'-bubble'" :style="bubbleStyle">
+  <img :src="'/svg/'+type+'-bubble.svg'" />
+  <div class="counter">{{ value }}</div>
+</div>
+`
+
+Vue.component('bubble-tip',{
+  template: BubbleTip,
+  props: ['type','value','ratio'],
+  computed: {
+    bubbleStyle () {
+      return {
+        top: (this.ratio * 220 + 40) * state.worldRatio + 'px'
+      }
+    }
+  }
+})
+```
+
+根据现有血量和总血量的比值修改top属性，比值通过旗帜组件传入。
+比值的计算也可以在旗帜组件中使用computed属性实现，因为旗帜组件拿到了player。
+```javascript
+Vue.component('castle-banners',{
+  template: CastleBanners,
+  props: ['player'],
+  computed: {
+    foodRatio () {
+      return this.player.food / maxFood
+    },
+    healthRatio () {
+      return this.player.health / maxHealth
+    }
+  }
+})
+```
+现在只要把foodRatio传递给bubble就行了。
+```javascript
+<bubble-tip type="food" :value="player.food" :ratio="foodRatio"/>
+```
+
+然后是旗布，同样的道理，也需要ratio，不然不可能实现我们想要的效果。
+```javascript
+props: ['color','ratio']
+```
+我们想要让height能反应血量的变化，因此定义计算属性`targetHeight(){return 220 * this.ratio + 40}`
+但是由于我们之前在模版中写的是`height`而不是`targetHeight`，所以血量的改变不会导致旗帜长度的变化。
+
+聪明的你可能会想，那把`svg`中的`height`改成`targetHeight`不久好了吗？
+没错，但是这样仅仅满足了我们当前的需求，日后在实现动画时就不能满足需求了。因此我们再多定义一个侦听器侦听`targetHeight`，让`targetHeight`属性在变化时修改height属性。
+```javascript
+watch: {
+    targetHeight: {
+      handler: function (newval,oldval) {
+          const vm = this
+          vm.height = newval
+      },
+      deep: true,
+    }
+  },
+```
+现在，尝试用Vue调试工具修改玩家的血量，你会惊奇的发现我们成功地让气泡和血条动了起来。
+
+但是别高兴的太早，你会发现血条是突然从10变到5的，而没有一个逐渐掉血的过程，虽然无伤大雅但是我们写程序还是要精益求精。
+
+还记得上面提到为什么不要之际修改`height`吗，现在用处就来了。
+
+我们需要使用Vue提供的动画功能和tweenjs库配合完成这项功能。
+
+原理是根据Vue的双向绑定机制，我们只要让`height`的值从10在一段时间慢慢衰减到5,那么就可以实现动画效果。我们现在明显是从10直接跳跃到了5，you know？而tweenjs就是帮助我们方便的实现值的衰减这一功能的。
+
+当然这只是他的其中一个功能而已，他还有很多非常强大的功能等待我们去发现！
+
+好了，了解了实现的原理我们就开始动手把。
+
+先在html文件中导入tweenjs：
+```javascript
+<script src="https://code.createjs.com/1.0.0/tweenjs.min.js"></script>
+```
+
+然后修改watch
+
+```javascript
+watch: {
+    targetHeight: {
+      handler: function (newval,oldval) {
+          const vm = this
+          function update () {
+            vm.height = x.val.toFixed(1)
+          }
+          let x = {
+            val:oldval
+          }
+          new createjs.Tween.get(x)
+              .to({ val:newval },500,createjs.Ease.cubicInOut)
+              .addEventListener('change', update)
+      },
+      deep: true,
+    }
+  },
+```
+
+这里我在实现的时候遇到了两个问题与诸位分享：
+大家先看原书的代码：
+```javascript
+watch: {
+    targetHeight: {
+      handler: function (newval,oldval) {
+          const vm = thid
+          new TWEEN.Tween({value:oldval})
+              .easing(TWEEN.Easing.Cubic.InOut)
+              .to({value: newval}, 500)
+              .onUpdate(function () {
+                vm.height = this.value.toFixed(0)
+              })
+              .start()
+      },
+      deep: true,
+    }
+  },
+```
+可能是由于Tweenjs版本的原因，原书的代码已经不能使用了，因此我只能去参考官网的教程。然鹅官网不仅全是英文，示例和说明也少的要死，根本不是人看的，在我的摸索下总算是实现了和原书一致的功能。感兴趣的小伙伴可以自己去官网学习学习。
+
+这里单独声明一个对象`x`是因为tweenjs会在动画持续时间内不断修改x的value来达到我们想要的目的，如果像原书代码一样匿名调用是不行的。
+
+而且还有一个大坑是addEVTlsnr是不能链式添加的，如果要添加多个侦听器，必须在原始对象上添加。如果你现在不理解这句话的含义，后面制作白云动画的时候会理解的。
+
+ok，到此为止我们的旗帜组件已经制作完毕了，去浏览器修改血量看看效果如何吧。
+
+
+

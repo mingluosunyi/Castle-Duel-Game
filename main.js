@@ -7,10 +7,12 @@ const App = `
   />
   <!-- 城堡 -->
   <div class="world">
-    <big-castle v-for="(player,index) in players" :player="player" :index="index" :key="index"/>
-    <div class="clouds">
+    <big-castle v-for="(player,index) in players" :index="index" :key="index">
+      <castle-banners :player="player" />
+    </big-castle>
+    <!--<div class="clouds">
       <move-cloud v-for="index in 10" :type="(index-1)%5+1"/>
-    </div>
+    </div>-->
     <div class="land"/>
   </div>
   <!-- 手牌 -->
