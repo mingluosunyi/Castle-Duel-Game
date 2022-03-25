@@ -2,6 +2,7 @@ const cloudAnimationDuration = {
   min: 10000,
   max: 50000
 }
+
 const MoveCloud = `
 <div class="cloud" :class="'cloud'+type" :style="style">
   <img :src="'../svg/cloud'+type+'.svg'" @load="initPosition">

@@ -12,7 +12,7 @@ new Vue({
 ```
 
 ## 构建用户界面
-###第一个组件：顶栏
+### 第一个组件：顶栏
 替换html里的script标签，解压后的文件中的Vue导入连接已经失效了，换成vue官网的链接。
 
 ```javascript
@@ -665,5 +665,296 @@ watch: {
 
 ok，到此为止我们的旗帜组件已经制作完毕了，去浏览器修改血量看看效果如何吧。
 
+---
 
+勘误，上面有个地方说错了，这里没有用到Vue的transition
 
+#### 制作白云
+制作白云我们需要创建一个新的组件，movecloud。
+
+在movecloud.js中添加动画持续的最大和最小时间。然后创建组件
+```javascript
+const cloudAnimationDuration = {
+  min: 10000,
+  max: 50000
+}
+```
+
+```javascript
+const MoveCloud = `
+<div class="cloud" :class="'cloud'+type">
+  <img :src="'../svg/cloud'+type+'.svg'">
+</div>
+`
+Vue.component('move-cloud', {
+  template: MoveCloud,
+  props: ['type'],
+}
+```
+type是云朵的类型，这里提供了5种形状各异的云，因此type的值在1-5。
+
+我们需要通过修改响应式的style数据属性来修改组件中的z-index和transform CSS属性。
+```javascript
+data() {
+    return {
+      style: {
+        transform: 'none',
+        zIndex: 0
+      }
+    }
+```
+利用v-bind指令应用下面这些style属性
+```javascript
+<div class="cloud" :class="'cloud'+type" :style="style">
+```
+下面创建一个新的方法，利用transformCSS属性设置cloud组件的位置。
+
+```javascript
+ setPosition(left,top) {
+      this.style.transform = `translate(${left}px,${top}px)`
+    },
+```
+
+当图片加载时，需要初始化云朵的水平位置，使其在可视范围之外。
+```javascript
+ initPosition() {
+      const width = this.$el.clientWidth
+      this.setPosition(-width,0)
+    },
+```
+
+使用v-on指令添加load事件的侦听。
+```javascript
+<img :src="'../svg/cloud'+type+'.svg'" @load="initPosition">
+```
+
+下面我们给云朵添加动画
+
+```javascript
+startAnimation(delay= 0) {
+      const vm = this
+      const width = this.$el.clientWidth
+      const { min,max } = cloudAnimationDuration
+      const animationDuration = Math.random() * (max - min) + min
+      this.style.zIndex = Math.round(max - animationDuration)
+
+      const top = Math.random() * (window.innerHeight * 0.3)
+      let initialState = {
+        value:-width
+      }
+      let TWEEN = new createjs.Tween(initialState)
+          .to({ value: window.innerWidth },animationDuration)
+          .wait(delay)
+**    TWEEN.addEventListener('change',function () {
+        vm.setPosition(initialState.value,top)
+      })
+      TWEEN.addEventListener('complete',function () {
+        vm.startAnimation(Math.random() * 10000)
+      })
+    }
+  },
+```
+
+这里可以看到我之前提到的一个问题，就是addEventListener不能链式使用。不然会报错。因此我这里吧TWEEN提取成了变量。
+
+与旗帜不同的是我们让云朵在动画结束后重启一个新的动画，这样页面上就永远存在云朵了。
+
+最后我们吧组件添加到main中。
+```javascript
+  <div class="world">
+    <big-castle v-for="(player,index) in players" :index="index" :key="index">
+      <castle-banners :player="player" />
+    </big-castle>
+**  <div class="clouds">
+**    <move-cloud v-for="index in 10" :type="(index-1)%5+1"/>
+**  </div>
+    <div class="land"/>
+  </div>
+```
+
+实在不想码字了，这段就抄了书本的。forgive me。
+
+![cloud](readme-md-pictures/截屏2022-03-25%20下午7.25.40.png)
+
+### 浮层
+![overlay](readme-md-pictures/截屏2022-03-25%20下午7.25.35.png)
+浮层就是这样的东西，每次轮到你就会给出一些提示。
+总共有三种浮层。一种是上面这样的：提示你的回合来了，第二种出现在第一种之后，提示对手上回和干了什么事情。第三种是游戏结束时才会出现的。
+![overlay-turn](readme-md-pictures/截屏2022-03-25%20下午7.30.15.png)
+![overlay-over](readme-md-pictures/截屏2022-03-25%20下午7.30.36.png)
+
+同样要创建一个组件，overlay。
+
+这里使用slot+component is的方式实现动态组件，也就是在overlay中创建一个插槽，然后用`<component>`插入这个插槽，用is属性指定哪个组件被放入这个插槽。可以理解为我现在有一个插口和三张switch卡带，is属性可以指定哪张卡带被插入到switch中。通过修改is可以实现动态插入卡带。不知到这个比喻你能否理解。也可以参考Vue官网的动态组件部分内容。
+
+```javascript
+const Overlay = `
+<div class="overlay" @click="handleClick">
+  <div class="content">
+    <slot />
+  </div>
+</div>
+`
+
+Vue.component('over-lay',{
+  methods: {
+    handleClick() {
+      this.$emit('close')
+    }
+  },
+  template: Overlay
+})
+
+//main.js
+<over-lay v-if="activeOverlay" :key="activeOverlay" @close="">
+    <component :is="" />
+</over-lay>
+```
+不知到我有没有提起过activeOverlay这个属性，这是需要人工添加到state.js里的一个属性。默认值设为`'player-turn'`，这样一进游戏就能看见轮到初始玩家的回合了。
+
+接下来我们来创建三个不同的浮层
+#### 开始浮层
+```javascript
+const OverlayContentPlayerTurn = `
+<div>
+  <div class="big" v-if="player.skipTurn">
+    {{ player.name }},
+    <br>
+    Your Turn is Skipped !
+  </div>
+  <div class="big" v-else>
+    {{ player.name }},
+    <br>
+    Your Turn has Come !
+    <div>Tap to Continue</div>
+  </div>
+</div>
+`
+
+Vue.component('overlay-content-player-turn',{
+  template: OverlayContentPlayerTurn,
+  props: ['player']
+})
+```
+
+很简单，只需要显示当前回合的玩家姓名就可以了
+
+#### 上回和浮层
+还记得玩家数据里记录了上回和使用的卡牌吗`lastPlayedCardId: null`,
+
+这个浮层显示对手上回和使用了什么卡牌。当然，有些卡牌使用会导致玩家的回合被跳过，所以对手上回和也可能是被跳过了，因此需要判读一下。
+
+```javascript
+const OverlayContentLastPlay = `
+<div>
+  <div v-if="opponent.skippedTurn">
+    {{ opponent.name }} Turn was Skipped !
+  </div>
+  <template v-else>
+    <div>{{ opponent.name }} just Played:</div>
+    <one-card :def="lastPlayedCard" />
+  </template>
+</div>
+`
+
+Vue.component('overlay-content-last-play',{
+  template: OverlayContentLastPlay,
+  props: ['opponent'],
+  computed: {
+    lastPlayedCard() {
+      return cards[this.opponent.lastPlayedCardId]
+    }
+  }
+})
+```
+这里的`template`也可以用div，不过template更适合h5的标准，毕竟没有语意的div还是少用为好！
+
+#### 游戏结束浮层
+```javascript
+const PlayerResult = `
+<div class="player-result" :class="result">
+  <span class="name">{{ player.name }}</span> is 
+  <span class="result"> {{ result }}</span>
+</div>
+`
+
+Vue.component('player-result',{
+  template:PlayerResult,
+  props: ['player'],
+  computed: {
+    result() {
+      return this.player.dead ? 'defeated' : 'victorious'
+    }
+  }
+})
+
+const OverlayContentGameOver = `
+<div>
+  <div class="big">
+    Game Over !
+    <player-result v-for="player in players" :player="player"/>
+  </div>
+</div>
+`
+
+Vue.component('overlay-content-game-over',{
+  template: OverlayContentGameOver,
+  props: ['players']
+})
+```
+结束浮层分为了两个组件，当然也可以合并到一起。
+
+分开的目的主要是复用。代码很简单相信你一下就能看懂了。
+
+#### 最后我们给浮层加上一些动画和背景
+用transition包裹
+```javascript
+  <transition name="zoom">
+    <over-lay v-if="activeOverlay" :key="activeOverlay" @close="handleOverlayClose">
+      <component
+      :is="'overlay-content-'+activeOverlay"
+      :player="currentPlayer"
+      :opponent="currentOpponent"
+      :players="players"/>
+    </over-lay>
+  </transition>
+```
+在transitions.css中加入一些效果
+```css
+.zoom-enter-active,
+.zoom-leave-active {
+    transition: opacity .3s, transform .3s;
+}
+
+.zoom-enter,
+.zoom-leave-to {
+    opacity: 0;
+    transform: scale(.7);
+}
+```
+最后给浮层加上背景以及在transitions.css中加入一些背景效果
+```javascript
+  <transition name="fade">
+      <div class="overlay-background" v-if="activeOverlay"/>
+  </transition>
+    
+//transitions.css
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 1s;
+}
+
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+}
+```
+
+### 尾声
+最后的最后，我们来实现游戏的玩法，这部分可以说是重点，却又不是重点。因为基本上所有的玩法都已经用函数写好了，我们只需要调用一些函数就行了。并且我写这个项目主要是为了训练使用Vue的api。因此最后我就一笔带过了，想要深入了解的可以下载查看源代码。所有的修改都在state.js和main.js中。诸位可以浅看一下。
+![img1](readme-md-pictures/IMG_0911.png)
+![img1](readme-md-pictures/IMG_0912.png)
+![img1](readme-md-pictures/IMG_0913.png)
+![img1](readme-md-pictures/IMG_0914.png)
+
+感谢！

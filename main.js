@@ -10,18 +10,19 @@ const App = `
     <big-castle v-for="(player,index) in players" :index="index" :key="index">
       <castle-banners :player="player" />
     </big-castle>
-    <!--<div class="clouds">
+    <div class="clouds">
       <move-cloud v-for="index in 10" :type="(index-1)%5+1"/>
-    </div>-->
+    </div>
     <div class="land"/>
   </div>
   <!-- 手牌 -->
   <transition name="hand"> 
     <hand-cards :cards="currentHand" v-if="!activeOverlay" @card-play="handlePlayCard" @card-leave-end="handleCardLeaveEnd"/>
   </transition>
+  <!-- 浮层 -->
   <transition name="fade">
       <div class="overlay-background" v-if="activeOverlay"/>
-    </transition>
+  </transition>
   <transition name="zoom">
     <over-lay v-if="activeOverlay" :key="activeOverlay" @close="handleOverlayClose">
       <component
