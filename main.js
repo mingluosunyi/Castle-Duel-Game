@@ -1,5 +1,5 @@
 const App = `
-<div id="app">
+<div id="app" :class="cssClass">
   <top-bar
   :players="players"
   :turn="turn"
@@ -15,17 +15,17 @@ const App = `
   </div>
   <!-- 手牌 -->
   <transition name="hand"> 
-    <hand-cards :cards="testHand" v-if="!activeOverlay" @card-play="testPlayCard" />
+    <hand-cards :cards="currentHand" v-if="!activeOverlay" @card-play="handlePlayCard" @card-leave-end="handleCardLeaveEnd"/>
   </transition>
   <transition name="fade">
       <div class="overlay-background" v-if="activeOverlay"/>
     </transition>
   <transition name="zoom">
-    <over-lay v-if="activeOverlay" :key="activeOverlay">
+    <over-lay v-if="activeOverlay" :key="activeOverlay" @close="handleOverlayClose">
       <component
       :is="'overlay-content-'+activeOverlay"
       :player="currentPlayer"
-      :oppnent="currentOpponent"
+      :opponent="currentOpponent"
       :players="players"/>
     </over-lay>
   </transition>
@@ -38,37 +38,96 @@ new Vue({
   data: state,
   template: App,
   computed: {
-    testCard () {
-      return cards.archers
+    cssClass() {
+      return {
+        'can-play':this.canPlay
+      }
     }
   },
   methods: {
-    handlePlay () {
-      console.log('You played a card!')
+    beginGame() {
+      state.players.forEach(drawInitialHand)
     },
-    createTestHand () {
-      const cards = []
-      for (let i = 0; i < 5; i++) {
-        cards.push(this.testDrawCard())
-      }
-      return cards
-    },
-    testDrawCard () {
-      const ids = Object.keys(cards)
-      const randomId = ids[Math.floor(Math.random() * ids.length)]
-      return {
-        uid: cardUid++,
-        id: randomId,
-        def: cards[randomId]
+    playCard(card) {
+      if(state.canPlay) {
+        state.canPlay = false
+        currentPlayingCard = card
+        const index= state.currentPlayer.hand.indexOf(card)
+        state.currentPlayer.hand.splice(index,1)
+        addCardToPile(state.discardPile,card.id)
       }
     },
-    testPlayCard(card) {
-      const index = this.testHand.indexOf(card)
-      this.testHand.splice(index,1)
+    handlePlayCard(card) {
+      this.playCard(card)
+    },
+    handleCardLeaveEnd() {
+      this.applyCard()
+    },
+    nextTurn() {
+      state.turn++
+      state.currentPlayerIndex = state.currentOpponentId
+      state.activeOverlay = 'player-turn'
+    },
+    endGame() {
+      state.activeOverlay = 'game-over'
+    },
+    applyCard() {
+      const card = currentPlayingCard
+      applyCardEffect(card)
+      setTimeout(() => {
+        state.players.forEach(checkPlayerLost)
+        if(isOnePlayerDead()) {
+          this.endGame()
+        } else {
+          this.nextTurn()
+        }
+      },700)
+    },
+    newTurn () {
+      state.activeOverlay = null
+      if(state.currentPlayer.skipTurn) {
+        this.skipTurn()
+      }else {
+        this.startTurn()
+      }
+    },
+    skipTurn() {
+      state.currentPlayer.skippedTurn = true
+      state.currentPlayer.skipTurn = false
+      this.nextTurn()
+    },
+    startTurn() {
+      state.currentPlayer.skippedTurn = false
+      if(state.turn > 2) {
+        setTimeout(() => {
+          state.currentPlayer.hand.push(drawCard())
+          state.canPlay = true
+        },800)
+      }else {
+        state.canPlay = true
+      }
+    },
+    handleOverlayClose() {
+      let vm = this
+      let overlayCloseHandlers = {
+        'player-turn'() {
+          if(state.turn > 1) {
+            state.activeOverlay = 'last-play'
+          }else {
+            vm.newTurn()
+          }
+        },
+        'last-play' () {
+          vm.newTurn()
+        },
+        'game-over'() {
+          document.location.reload()
+        }
+      }
+      overlayCloseHandlers[this.activeOverlay]()
     }
   },
-  created () {
-    this.testHand = this.createTestHand()
-    setTimeout(() => this.currentPlayer.food = 5,2000)
+  mounted() {
+    this.beginGame()
   }
 })

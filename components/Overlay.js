@@ -38,12 +38,12 @@ Vue.component('overlay-content-player-turn',{
 
 const OverlayContentLastPlay = `
 <div>
-  <div v-if="opponent.skipperTurn">
+  <div v-if="opponent.skippedTurn">
     {{ opponent.name }} Turn was Skipped !
   </div>
   <template v-else>
     <div>{{ opponent.name }} just Played:</div>
-    <card :def="lastPlayedCard" />
+    <one-card :def="lastPlayedCard" />
   </template>
 </div>
 `
